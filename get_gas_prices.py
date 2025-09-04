@@ -1,6 +1,8 @@
 import requests
 import json
 import os # need to read eia key from an environment variable
+from dotenv import load_dotenv
+load_dotenv()
 API_key = "apikey 6rpEIOw3OKumObaZFLkuJ2:3W77eXmleuYwAuFrvxBRS3"
 headers = {"authorization": os.getenv("COLLECT_API_KEY"),
          "content-type" : "application/json"}

@@ -1,6 +1,6 @@
 import discord
 import requests
-from get_gas_prices import get_gas_prices
+from get_gas_prices import get_gas_prices, get_eia_ny_weekly
 #importing important libraries to make the bot send me updates
 from discord.ext import tasks
 import asyncio #enables bot to wait
@@ -34,6 +34,10 @@ async def schedule_gas_update():
         channel = client.get_channel(1395789959553749206)
         if channel:
             result = get_gas_prices("New York")
+            
+            #fallback if collectAPI fails
+            if result.lower().startswith("error"):
+                result = get_eia_ny_weekly()
             await channel.send(f"**Scheduled Gas Prices Update:**\n{result}")
    # print(f"[DEBUG] The time is now {tNow}")
 
@@ -58,6 +62,10 @@ async def on_message(message):
         
         state = parts[1]
         result = get_gas_prices(state)
+
+        if result.lower().startswith("error"):
+            result = get_eia_ny_weekly()
+
         await message.channel.send(result)
 
 
