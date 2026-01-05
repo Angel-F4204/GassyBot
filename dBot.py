@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 import os
 from user_manager import UserManager
+from web_server import keep_alive
 
 
 
@@ -89,11 +90,23 @@ async def on_message(message):
         if result.lower().startswith("error"):
             result = get_eia_ny_weekly()
 
+
         await message.channel.send(result)
+
+    #check if the message is !site
+    if message.content.startswith("!site") or message.content.startswith("!map"):
+        # In cloud, this would be your railway app URL. Locally it's localhost.
+        # We can try to detect or just give a generic message for now.
+        site_url = "http://localhost:5000" # Update this if deployed!
+        if os.getenv("RAILWAY_STATIC_URL"):
+            site_url = f"https://{os.getenv('RAILWAY_STATIC_URL')}"
+            
+        await message.channel.send(f"🌍 **Live Dashboard & Map**:\n{site_url}")
 
 
 
 #bot token
 token = os.getenv("DISCORD_BOT_TOKEN")
 print("DISCORD TOKEN LOADED:", (token[:10]+ "...")if token else "missing")
+keep_alive() # Start the web server
 client.run(token)
