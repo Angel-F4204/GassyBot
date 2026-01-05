@@ -24,7 +24,9 @@ def get_gas_prices(state_name):
                    f" Regular: ${state['gasoline']}\n"
                    f" MidGrade: ${state['midGrade']}\n"
                    f" Premium: ${state['premium']}\n"
-                   f" Diesel: ${state['diesel']}\n")
+                   f" Diesel: ${state['diesel']}\n\n"
+                   f"🗺️ Map: https://www.google.com/maps/search/gas+stations+in+{state_name.replace(' ', '+')}")
+
     
     return f"State '{state_name}' not found."
 
