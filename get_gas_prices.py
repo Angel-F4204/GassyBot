@@ -3,7 +3,7 @@ import json
 import os # need to read eia key from an environment variable
 from dotenv import load_dotenv
 load_dotenv()
-API_key = "apikey 6rpEIOw3OKumObaZFLkuJ2:3W77eXmleuYwAuFrvxBRS3"
+
 headers = {"authorization": os.getenv("COLLECT_API_KEY"),
          "content-type" : "application/json"}
 EIA_API_KEY= os.getenv("EIA_API_KEY", "").strip()
@@ -73,22 +73,5 @@ def get_eia_ny_weekly():
 
 if __name__ == "__main__":
     print(get_eia_ny_weekly())
-''''
 
-#building a COMMAND lINE tool for users
-name_ofState= input ("Enter State You wish to get the gas prices of: ")
- #this is the loop that specifically helps me look through New York Prices
-for state in data['result']:
-    if state['name']== "New York":
-        print("Gas Prices in New York:")
-        print(f" Regular: ${state['gasoline']}")
-        print(f" MidGrade: ${state['midGrade']}")
-        print(f" Premium: ${state['premium']}")
-        print(f" Diesel: ${state['diesel']}")
-        break
-else:
-    print("State not found.")
-print(response.status_code)
-print(response.json())
-print(json.dumps(response.json(),indent=2))
-'''
+
