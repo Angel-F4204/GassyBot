@@ -69,8 +69,10 @@ def get_eia_ny_weekly():
     
     return(
         f"EIA NY Weekly regular gasoline: \n"
-        f"Week ending {period}: ${price:.3f} per gallon"
+        f"Week ending {period}: ${price:.3f} per gallon\n\n"
+        f"🗺️ Map: https://www.google.com/maps/search/gas+stations+in+New+York"
     )
+
 
 
 if __name__ == "__main__":
