@@ -4,10 +4,16 @@ import os # need to read eia key from an environment variable
 from dotenv import load_dotenv
 load_dotenv()
 
-headers = {"authorization": os.getenv("COLLECT_API_KEY"),
-         "content-type" : "application/json"}
-EIA_API_KEY= os.getenv("EIA_API_KEY", "").strip()
 def get_gas_prices(state_name):
+    api_key = os.getenv("COLLECT_API_KEY")
+    if not api_key:
+        return "Error: COLLECT_API_KEY not set."
+        
+    headers = {
+        "authorization": api_key,
+        "content-type" : "application/json"
+    }
+
     url = "https://api.collectapi.com/gasPrice/allUsaPrice"
     response = requests.get(url, headers=headers)
     data = response.json()
@@ -36,6 +42,7 @@ if __name__ == "__main__":
 
 
 def get_eia_ny_weekly():
+    EIA_API_KEY = os.getenv("EIA_API_KEY", "").strip()
     if not EIA_API_KEY:
         return "EIA error: no API key set. Set EIA_API_KEY env var"
     
