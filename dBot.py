@@ -125,8 +125,9 @@ async def on_message(message):
         # In cloud, this would be your railway app URL. Locally it's localhost.
         # We can try to detect or just give a generic message for now.
         site_url = "http://localhost:5000" # Update this if deployed!
-        if os.getenv("RAILWAY_STATIC_URL"):
-            site_url = f"https://{os.getenv('RAILWAY_STATIC_URL')}"
+        domain = os.getenv("RAILWAY_PUBLIC_DOMAIN") or os.getenv("RAILWAY_STATIC_URL")
+        if domain:
+            site_url = f"https://{domain}"
             
         await message.channel.send(f"🌍 **Live Dashboard & Map**:\n{site_url}")
 
