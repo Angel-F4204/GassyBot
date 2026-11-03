@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 import os
 from user_manager import UserManager
+import places
 from web_server import keep_alive
 
 
@@ -93,6 +94,32 @@ async def on_message(message):
 
         await message.channel.send(result)
 
+    #check if the message is !near (station prices around a zip/town)
+    if message.content.startswith("!near"):
+        parts = message.content.split(maxsplit=1)
+        if len(parts) < 2:
+            await message.channel.send("Please give a zip code or town, e.g., '!near 10001'.")
+            return
+
+        try:
+            stations = places.stations_for_place(parts[1])
+        except RuntimeError as e:
+            await message.channel.send(f"Error: {e}")
+            return
+
+        best = places.cheapest(stations, "Regular")
+        if not best:
+            await message.channel.send(f"No regular gas prices found near {parts[1]}.")
+            return
+
+        lines = [f"⛽ **Cheapest regular near {parts[1]}:**"]
+        for s in best:
+            p = s["prices"]["Regular"]
+            age = f" (updated {p['days_ago']}d ago)" if p["days_ago"] else ""
+            lines.append(f"**${p['price']:.2f}** — {s['name']}, {s['address']}{age}")
+        await message.channel.send("\n".join(lines))
+        return
+
     #check if the message is !site
     if message.content.startswith("!site") or message.content.startswith("!map"):
         # In cloud, this would be your railway app URL. Locally it's localhost.
@@ -107,6 +134,11 @@ async def on_message(message):
 
 #bot token
 token = os.getenv("DISCORD_BOT_TOKEN")
-print("DISCORD TOKEN LOADED:", (token[:10]+ "...")if token else "missing")
-keep_alive() # Start the web server
-client.run(token)
+print("DISCORD TOKEN LOADED:", "yes" if token else "missing")
+if token:
+    keep_alive() # Start the web server
+    client.run(token)
+else:
+    # No Discord token yet, so just run the web app
+    from web_server import run
+    run()

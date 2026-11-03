@@ -1,26 +1,48 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 from threading import Thread
 import os
+from dotenv import load_dotenv
 from get_gas_prices import get_gas_prices
+import places
 
+load_dotenv()
 app = Flask(__name__)
+# Pick up edits to templates/index.html without restarting
+app.config["TEMPLATES_AUTO_RELOAD"] = True
 
 @app.route('/')
 def home():
-    # Helper request to get initial data (optional, or we can fetch in JS)
     return render_template('index.html')
 
 @app.route('/api/data')
 def api_data():
-    # For now, let's just get New York as default or extend to query params
-    # We will fetch raw text from get_gas_prices but ideally we'd want structured JSON.
-    # Parsing the text for the demo:
+    # State average (CollectAPI), kept for the original dashboard
     raw_text = get_gas_prices("New York")
-    
-    # Simple parsing to extract price for display
-    # Realistically we should refactor get_gas_prices to return a Dict, then format text.
-    # But for now, we send the text to be displayed.
     return jsonify({"text": raw_text})
+
+@app.route('/api/nearby')
+def api_nearby():
+    # Station-by-station prices around the phone's location
+    try:
+        lat = float(request.args["lat"])
+        lng = float(request.args["lng"])
+    except (KeyError, ValueError):
+        return jsonify({"error": "lat and lng are required"}), 400
+    try:
+        return jsonify({"stations": places.stations_near(lat, lng)})
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 502
+
+@app.route('/api/search')
+def api_search():
+    # Same thing but for a typed zip code / town
+    query = request.args.get("q", "").strip()
+    if not query:
+        return jsonify({"error": "q is required"}), 400
+    try:
+        return jsonify({"stations": places.stations_for_place(query)})
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 502
 
 def run():
     # Use PORT env var if available (Clouds usage), else 5000
@@ -32,3 +54,7 @@ def keep_alive():
     t = Thread(target=run)
     t.daemon = True
     t.start()
+
+if __name__ == "__main__":
+    # Run just the web app without the Discord bot
+    run()

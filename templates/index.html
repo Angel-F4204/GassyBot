@@ -2,141 +2,294 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gas Prices Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>GassyBot</title>
+    <!-- Lets "Add to Home Screen" open it like an app -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="GassyBot">
+    <meta name="theme-color" content="#000000">
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --glass-bg: rgba(20, 20, 20, 0.7);
+            --glass-bg: rgba(20, 20, 20, 0.85);
             --glass-border: rgba(255, 255, 255, 0.1);
             --accent: #00d4ff;
             --text-main: #ffffff;
+            --text-dim: rgba(255, 255, 255, 0.55);
+            --good: #3ddc84;
         }
-        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Outfit', sans-serif; overflow: hidden; background: #000; }
-        
-        #map { height: 100vh; width: 100vw; z-index: 1; }
+        * { box-sizing: border-box; }
+        body, html { margin: 0; padding: 0; height: 100%; font-family: 'Outfit', sans-serif; background: #000; color: var(--text-main); }
+        body { display: flex; flex-direction: column; }
 
-        .dashboard-card {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 1000;
+        #map { height: 38vh; width: 100%; z-index: 1; flex-shrink: 0; background: #111; }
+        .dark-tiles { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9); }
+
+        .sheet {
+            flex: 1;
+            overflow-y: auto;
+            margin-top: -20px;
+            z-index: 2;
+            position: relative;
             background: var(--glass-bg);
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
-            border: 1px solid var(--glass-border);
-            border-radius: 20px;
-            padding: 25px;
-            width: 320px;
-            color: var(--text-main);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-            animation: fadeIn 1s ease-out;
+            border-top: 1px solid var(--glass-border);
+            border-radius: 20px 20px 0 0;
+            padding: 18px 16px calc(24px + env(safe-area-inset-bottom));
         }
 
-        h1 { margin: 0 0 5px 0; font-size: 24px; font-weight: 700; background: linear-gradient(90deg, #fff, #aaa); -webkit-background-clip: text; -webkit-text-fill-color: transparent;}
-        h2 { margin: 0 0 20px 0; font-size: 14px; font-weight: 300; opacity: 0.7; }
+        h1 { margin: 0; font-size: 24px; font-weight: 700; background: linear-gradient(90deg, #fff, #aaa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .status { margin: 2px 0 14px; font-size: 13px; font-weight: 300; color: var(--text-dim); }
 
-        .price-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 12px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-        }
-        .price-label { font-weight: 400; }
-        .price-val { font-weight: 700; color: var(--accent); }
-
-        .action-btn {
-            display: block;
-            width: 100%;
-            padding: 12px;
-            margin-top: 20px;
-            background: var(--accent);
-            color: #000;
-            text-align: center;
+        .search { display: flex; gap: 8px; }
+        .search input {
+            flex: 1; min-width: 0;
+            padding: 12px 14px;
             border-radius: 12px;
-            text-decoration: none;
-            font-weight: 700;
-            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid var(--glass-border);
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-main);
+            font: inherit; font-size: 16px;
+        }
+        .btn {
+            padding: 12px 14px;
+            border: 0; border-radius: 12px;
+            background: var(--accent); color: #000;
+            font: inherit; font-weight: 700;
+            cursor: pointer; white-space: nowrap;
+        }
+        .btn.ghost { background: rgba(255, 255, 255, 0.08); color: var(--text-main); }
+
+        .chips { display: flex; gap: 8px; margin: 14px 0; overflow-x: auto; }
+        .chip {
+            padding: 7px 14px;
+            border-radius: 999px;
+            border: 1px solid var(--glass-border);
+            background: transparent; color: var(--text-main);
+            font: inherit; font-size: 14px; cursor: pointer;
+        }
+        .chip.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 700; }
+
+        .station {
+            display: flex; align-items: center; gap: 12px;
+            padding: 14px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             cursor: pointer;
         }
-        .action-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 212, 255, 0.3);
-        }
+        .station .info { flex: 1; min-width: 0; }
+        .station .name { font-weight: 700; }
+        .station .addr { font-size: 13px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .station .meta { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
+        .station .price { text-align: right; }
+        .station .price .val { font-size: 22px; font-weight: 700; color: var(--accent); }
+        .station .price .na { font-size: 13px; color: var(--text-dim); }
+        .station.best .price .val { color: var(--good); }
+        .badge { display: inline-block; font-size: 11px; font-weight: 700; color: #000; background: var(--good); border-radius: 6px; padding: 1px 6px; margin-left: 6px; }
+        .go { font-size: 13px; color: var(--accent); text-decoration: none; }
+        .stale { color: #ffb347; }
 
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* Loader */
-        .loader { text-align: center; font-size: 14px; opacity: 0.6; }
+        .loader { text-align: center; font-size: 14px; color: var(--text-dim); padding: 24px 0; }
+        .error { color: #ff6b6b; }
+        .credit { font-size: 11px; color: var(--text-dim); text-align: center; margin-top: 16px; }
     </style>
 </head>
 <body>
 
-    <div class="dashboard-card">
-        <h1>Gas Prices</h1>
-        <h2>New York Area</h2>
-        
-        <div id="data-container">
-            <div class="loader">Loading live prices...</div>
-        </div>
-
-        <a href="https://www.google.com/maps/search/gas+stations+in+New+York" target="_blank" class="action-btn">
-            Find Cheapest Nearby ➜
-        </a>
-    </div>
-
     <div id="map"></div>
+
+    <div class="sheet">
+        <h1>Gas Near Me</h1>
+        <div class="status" id="status">Finding your location…</div>
+
+        <form class="search" id="search-form">
+            <input id="search-input" type="search" inputmode="search" placeholder="Zip code or town" autocomplete="off">
+            <button class="btn" type="submit">Go</button>
+            <button class="btn ghost" type="button" id="locate-btn" aria-label="Use my location">📍</button>
+        </form>
+
+        <div class="chips" id="chips"></div>
+
+        <div id="list"><div class="loader">Loading nearby stations…</div></div>
+
+        <div class="credit">Prices from Google Maps</div>
+    </div>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Initialize Map
-        // Default Center: New York (40.7128, -74.0060)
-        var map = L.map('map').setView([40.7128, -74.0060], 12);
+        const FUELS = ['Regular', 'Midgrade', 'Premium', 'Diesel'];
+        let fuel = 'Regular';
+        let stations = [];
+        let origin = null; // where distances are measured from
+        let markers = [];
 
-        // CartoDB Dark Matter Tiles (Premium Look)
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-            subdomains: 'abcd',
-            maxZoom: 20
+        // Default Center: New York (40.7128, -74.0060) until we know where you are
+        const map = L.map('map', { zoomControl: false }).setView([40.7128, -74.0060], 13);
+
+        // OpenStreetMap tiles (CARTO's dark tiles now need an API key), darkened with CSS
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            className: 'dark-tiles',
+            maxZoom: 19
         }).addTo(map);
 
-        // Fetch Data from our Flask API
-        fetch('/api/data')
-            .then(response => response.json())
-            .then(data => {
-                const text = data.text;
-                // Simple parser since the backend returns a formatted string
-                // We want to extract lines like "Regular: $3.50"
-                const lines = text.split('\n');
-                let html = '';
-                
-                lines.forEach(line => {
-                    if(line.includes('$')) {
-                        const parts = line.split(':');
-                        if(parts.length >= 2) {
-                            const label = parts[0].trim();
-                            const price = parts[1].trim();
-                            html += `
-                            <div class="price-item">
-                                <span class="price-label">${label}</span>
-                                <span class="price-val">${price}</span>
-                            </div>`;
-                        }
-                    }
-                });
+        const $ = id => document.getElementById(id);
+        const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-                if(html === '') html = '<div class="loader">Unable to parse live data.</div>';
-                document.getElementById('data-container').innerHTML = html;
-            })
-            .catch(err => {
-                console.error(err);
-                document.getElementById('data-container').innerHTML = '<div class="loader" style="color:red">Failed to load data.</div>';
+        function setStatus(text, isError) {
+            $('status').textContent = text;
+            $('status').classList.toggle('error', !!isError);
+        }
+
+        // Distance in miles between two points
+        function miles(a, b) {
+            const R = 3958.8, rad = x => x * Math.PI / 180;
+            const dLat = rad(b.lat - a.lat), dLng = rad(b.lng - a.lng);
+            const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
+            return 2 * R * Math.asin(Math.sqrt(h));
+        }
+
+        function updatedText(days) {
+            if (days === null || days === undefined) return '';
+            if (days <= 0) return 'updated today';
+            if (days === 1) return 'updated yesterday';
+            return `<span class="${days > 7 ? 'stale' : ''}">updated ${days} days ago</span>`;
+        }
+
+        function directionsUrl(s) {
+            // Apple Maps opens natively on iPhone and redirects to Google Maps elsewhere
+            return `https://maps.apple.com/?daddr=${s.lat},${s.lng}&q=${encodeURIComponent(s.name)}`;
+        }
+
+        function renderChips() {
+            $('chips').innerHTML = FUELS.map(f =>
+                `<button class="chip ${f === fuel ? 'active' : ''}" data-fuel="${f}">${f}</button>`).join('');
+        }
+
+        function render() {
+            renderChips();
+            markers.forEach(m => m.remove());
+            markers = [];
+
+            if (!stations.length) {
+                $('list').innerHTML = '<div class="loader">No gas stations found here.</div>';
+                return;
+            }
+
+            // Cheapest first, stations without a price for this fuel at the bottom
+            const sorted = [...stations].sort((a, b) => {
+                const pa = a.prices[fuel], pb = b.prices[fuel];
+                if (pa && pb) return pa.price - pb.price;
+                if (pa) return -1;
+                if (pb) return 1;
+                return (a.dist ?? 0) - (b.dist ?? 0);
             });
+            const best = sorted[0].prices[fuel] ? sorted[0].id : null;
+
+            $('list').innerHTML = sorted.map(s => {
+                const p = s.prices[fuel];
+                const dist = s.dist !== undefined ? `${s.dist.toFixed(1)} mi · ` : '';
+                return `
+                <div class="station ${s.id === best ? 'best' : ''}" data-id="${esc(s.id)}">
+                    <div class="info">
+                        <div class="name">${esc(s.name)}${s.id === best ? '<span class="badge">CHEAPEST</span>' : ''}</div>
+                        <div class="addr">${esc(s.address)}</div>
+                        <div class="meta">${dist}${p ? updatedText(p.days_ago) : ''}</div>
+                    </div>
+                    <div class="price">
+                        ${p ? `<div class="val">$${p.price.toFixed(2)}</div>` : '<div class="na">no price data</div>'}
+                        <a class="go" href="${directionsUrl(s)}" target="_blank" rel="noopener">Directions ➜</a>
+                    </div>
+                </div>`;
+            }).join('');
+
+            const bounds = [];
+            sorted.forEach(s => {
+                if (s.lat == null) return;
+                const p = s.prices[fuel];
+                const color = s.id === best ? '#3ddc84' : (p ? '#00d4ff' : '#666');
+                const m = L.circleMarker([s.lat, s.lng], { radius: 8, color, fillColor: color, fillOpacity: 0.9, weight: 2 })
+                    .bindPopup(`<b>${esc(s.name)}</b><br>${p ? '$' + p.price.toFixed(2) + ' ' + fuel : 'no price data'}`)
+                    .addTo(map);
+                m.stationId = s.id;
+                markers.push(m);
+                bounds.push([s.lat, s.lng]);
+            });
+            if (origin) bounds.push([origin.lat, origin.lng]);
+            if (bounds.length) map.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
+        }
+
+        async function load(url, label) {
+            $('list').innerHTML = '<div class="loader">Loading nearby stations…</div>';
+            setStatus(label);
+            try {
+                const rsp = await fetch(url);
+                const data = await rsp.json();
+                if (data.error) throw new Error(data.error);
+                stations = data.stations;
+                // Distances only make sense when we know where you are
+                stations.forEach(s => { if (origin && s.lat != null) s.dist = miles(origin, s); });
+                const priced = stations.filter(s => Object.keys(s.prices).length).length;
+                setStatus(`${stations.length} stations · ${priced} with prices`);
+                render();
+            } catch (err) {
+                console.error(err);
+                setStatus(err.message || 'Failed to load stations.', true);
+                $('list').innerHTML = '';
+            }
+        }
+
+        let youMarker = null;
+        function locate() {
+            if (!navigator.geolocation) {
+                setStatus('Location not available, type a zip code instead.', true);
+                return;
+            }
+            setStatus('Finding your location…');
+            navigator.geolocation.getCurrentPosition(pos => {
+                origin = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                if (youMarker) youMarker.remove();
+                youMarker = L.circleMarker([origin.lat, origin.lng], { radius: 7, color: '#fff', fillColor: '#fff', fillOpacity: 1 })
+                    .bindPopup('You').addTo(map);
+                load(`/api/nearby?lat=${origin.lat}&lng=${origin.lng}`, 'Loading stations near you…');
+            }, () => {
+                setStatus('Location blocked, type a zip code instead.', true);
+                $('list').innerHTML = '';
+            }, { enableHighAccuracy: true, timeout: 10000 });
+        }
+
+        $('search-form').addEventListener('submit', e => {
+            e.preventDefault();
+            const q = $('search-input').value.trim();
+            if (!q) return;
+            $('search-input').blur();
+            origin = null;
+            if (youMarker) { youMarker.remove(); youMarker = null; }
+            load(`/api/search?q=${encodeURIComponent(q)}`, `Loading stations near ${q}…`);
+        });
+        $('locate-btn').addEventListener('click', locate);
+
+        $('chips').addEventListener('click', e => {
+            const f = e.target.dataset.fuel;
+            if (f) { fuel = f; render(); }
+        });
+
+        $('list').addEventListener('click', e => {
+            if (e.target.closest('a')) return;
+            const row = e.target.closest('.station');
+            if (!row) return;
+            const m = markers.find(m => m.stationId === row.dataset.id);
+            if (m) { map.setView(m.getLatLng(), 16); m.openPopup(); window.scrollTo(0, 0); }
+        });
+
+        renderChips();
+        locate();
     </script>
 </body>
 </html>
