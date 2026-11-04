@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, send_from_directory
 from threading import Thread
 import os
 from dotenv import load_dotenv
@@ -10,9 +10,32 @@ app = Flask(__name__)
 # Pick up edits to templates/index.html without restarting
 app.config["TEMPLATES_AUTO_RELOAD"] = True
 
+def firebase_config():
+    # Login is optional: only turned on once the Firebase settings are in the environment
+    if not os.getenv("FIREBASE_API_KEY"):
+        return None
+    project = os.getenv("FIREBASE_PROJECT_ID", "")
+    return {
+        "apiKey": os.getenv("FIREBASE_API_KEY"),
+        "authDomain": os.getenv("FIREBASE_AUTH_DOMAIN", f"{project}.firebaseapp.com"),
+        "projectId": project,
+        "appId": os.getenv("FIREBASE_APP_ID", ""),
+    }
+
 @app.route('/')
 def home():
-    return render_template('index.html')
+    return render_template('index.html', firebase_config=firebase_config())
+
+# The service worker has to be served from the root so it covers the whole app
+@app.route('/sw.js')
+def service_worker():
+    rsp = send_from_directory(app.static_folder, 'sw.js', mimetype='application/javascript')
+    rsp.headers['Cache-Control'] = 'no-cache'
+    return rsp
+
+@app.route('/manifest.webmanifest')
+def manifest():
+    return send_from_directory(app.static_folder, 'manifest.webmanifest', mimetype='application/manifest+json')
 
 @app.route('/api/data')
 def api_data():
