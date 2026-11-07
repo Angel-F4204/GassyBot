@@ -13,180 +13,261 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="GassyBot">
     <meta name="theme-color" content="#000000">
-    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
+        /* iOS dark-mode system colors, with GassyBot's cyan as the app tint */
         :root {
             color-scheme: dark;
             --bg: #000000;
-            --card: rgba(255, 255, 255, 0.05);
-            --glass-bg: rgba(20, 20, 20, 0.92);
-            --glass-border: rgba(255, 255, 255, 0.1);
-            --accent: #00d4ff;
-            --text-main: #ffffff;
-            --text-dim: rgba(255, 255, 255, 0.55);
-            --good: #3ddc84;
-            --warn: #ffb347;
-            --bad: #ff6b6b;
+            --cell: #1c1c1e;
+            --cell-2: #2c2c2e;
+            --fill: rgba(118, 118, 128, 0.24);
+            --sep: rgba(84, 84, 88, 0.6);
+            --label: #ffffff;
+            --label-2: rgba(235, 235, 245, 0.6);
+            --label-3: rgba(235, 235, 245, 0.3);
+            --tint: #00d4ff;
+            --green: #30d158;
+            --orange: #ff9f0a;
+            --red: #ff453a;
+            --yellow: #ffd60a;
+            --bar: rgba(22, 22, 22, 0.78);
             --top: env(safe-area-inset-top, 0px);
             --bottom: env(safe-area-inset-bottom, 0px);
         }
-        * { box-sizing: border-box; }
-        html, body { margin: 0; padding: 0; height: 100%; font-family: 'Outfit', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text-main); }
-        button { font: inherit; color: inherit; }
-        button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html, body { margin: 0; padding: 0; height: 100%; background: var(--bg); color: var(--label);
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+            font-size: 17px; letter-spacing: -0.41px; -webkit-font-smoothing: antialiased; overscroll-behavior: none; }
+        body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+        input, select { -webkit-user-select: text; user-select: text; }
+        button { font: inherit; color: inherit; letter-spacing: inherit; }
+        button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; }
         [hidden] { display: none !important; }
+        svg.i { width: 1em; height: 1em; flex-shrink: 0; }
+        .tap { cursor: pointer; transition: opacity .15s, transform .15s; }
+        .tap:active { opacity: .55; }
 
-        #shell { height: 100%; display: flex; flex-direction: column; position: relative; overflow: hidden; background: var(--bg); }
+        #shell { height: 100%; display: flex; flex-direction: column; position: relative; overflow: hidden; }
 
-        /* ---------- Welcome / sign in ---------- */
-        .welcome { flex: 1; overflow-y: auto; display: flex; flex-direction: column; justify-content: center; gap: 28px;
-            padding: calc(32px + var(--top)) 24px calc(32px + var(--bottom));
-            background: radial-gradient(circle at 50% 18%, rgba(0, 212, 255, 0.16), transparent 55%), var(--bg); }
-        .brand { text-align: center; }
-        .brand .logo { width: 88px; height: 88px; border-radius: 22px; }
-        .brand h1 { font-size: 34px; margin: 14px 0 4px; }
-        .brand p { margin: 0 auto; max-width: 280px; color: var(--text-dim); line-height: 1.45; }
-        .auth { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 360px; margin: 0 auto; }
-        .auth .divider { text-align: center; font-size: 12px; color: var(--text-dim); letter-spacing: 0.08em; text-transform: uppercase; margin: 6px 0; }
-        .auth-error { color: var(--bad); font-size: 14px; text-align: center; min-height: 1em; }
-        .linkish { background: none; border: 0; color: var(--accent); cursor: pointer; padding: 6px; font-size: 15px; }
-        .linkish.dim { color: var(--text-dim); }
+        /* ---------- Buttons and fields ---------- */
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 50px; padding: 0 18px; border: 0;
+            border-radius: 14px; background: var(--tint); color: #000; font-size: 17px; font-weight: 600; cursor: pointer;
+            white-space: nowrap; text-decoration: none; transition: transform .12s, opacity .12s; }
+        .btn:active { transform: scale(.97); opacity: .8; }
+        .btn.gray { background: var(--fill); color: var(--tint); }
+        .btn.white { background: #fff; color: #000; }
+        .btn.block { width: 100%; }
+        .btn.sm { height: 34px; padding: 0 14px; border-radius: 999px; font-size: 15px; }
+        .btn.sm.gray { color: var(--tint); }
+        .text-btn { background: none; border: 0; color: var(--tint); font-size: 17px; padding: 8px; cursor: pointer; }
+        .text-btn:active { opacity: .5; }
+        .text-btn.dim { color: var(--label-2); }
 
-        /* ---------- Shared controls ---------- */
-        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 14px; border: 0; border-radius: 12px;
-            background: var(--accent); color: #000; font-weight: 700; cursor: pointer; white-space: nowrap; text-decoration: none; }
-        .btn.ghost { background: rgba(255, 255, 255, 0.08); color: var(--text-main); }
-        .btn.white { background: #fff; color: #111; }
-        .btn.block { width: 100%; padding: 14px; font-size: 16px; }
-        .btn.small { padding: 8px 12px; font-size: 14px; border-radius: 10px; }
-        .field { width: 100%; padding: 13px 14px; border-radius: 12px; border: 1px solid var(--glass-border);
-            background: rgba(255, 255, 255, 0.06); color: var(--text-main); font: inherit; font-size: 16px; }
-        .search { display: flex; gap: 8px; }
-        .search .field { flex: 1; min-width: 0; padding: 12px 14px; }
-        .chips { display: flex; gap: 8px; overflow-x: auto; }
-        .chip { padding: 7px 14px; border-radius: 999px; border: 1px solid var(--glass-border); background: transparent;
-            font-size: 14px; cursor: pointer; flex-shrink: 0; }
-        .chip.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 700; }
-        .stale { color: var(--warn); }
-        .error { color: var(--bad); }
-        .muted { color: var(--text-dim); }
+        .searchbar { display: flex; align-items: center; gap: 8px; }
+        .searchbar label { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; height: 38px; padding: 0 10px;
+            background: var(--fill); border-radius: 10px; color: var(--label-2); }
+        .searchbar input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; color: var(--label); font: inherit; font-size: 17px; }
+        .searchbar input::placeholder { color: var(--label-2); }
+        .searchbar input::-webkit-search-cancel-button { display: none; }
+        .icon-btn { width: 38px; height: 38px; border-radius: 10px; border: 0; background: var(--fill); color: var(--tint);
+            display: grid; place-items: center; font-size: 19px; cursor: pointer; flex-shrink: 0; }
+        .icon-btn:active { opacity: .5; }
 
-        /* ---------- App frame + tabs ---------- */
+        /* iOS segmented control for the fuel type */
+        .segmented { display: grid; grid-template-columns: repeat(4, 1fr); padding: 2px; border-radius: 9px; background: var(--fill); }
+        .segmented button { border: 0; background: none; height: 30px; border-radius: 7px; font-size: 13px; font-weight: 500; cursor: pointer; letter-spacing: -0.08px; }
+        .segmented button.on { background: #636366; font-weight: 600; box-shadow: 0 3px 8px rgba(0,0,0,.12), 0 3px 1px rgba(0,0,0,.04); }
+
+        /* ---------- Inset grouped lists ---------- */
+        .group-title { font-size: 13px; text-transform: uppercase; color: var(--label-2); margin: 0 0 7px 16px; letter-spacing: -0.08px; }
+        .group-title.row-title { display: flex; justify-content: space-between; align-items: baseline; margin-right: 4px; }
+        .group-title .text-btn { font-size: 15px; text-transform: none; padding: 0 12px; }
+        .group-foot { font-size: 13px; color: var(--label-2); margin: 7px 16px 0; line-height: 1.35; letter-spacing: -0.08px; }
+        .list { background: var(--cell); border-radius: 12px; overflow: hidden; }
+        .row { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 10px 16px; position: relative; }
+        .row + .row::before { content: ""; position: absolute; top: 0; right: 0; left: var(--inset, 16px); border-top: .5px solid var(--sep); }
+        .row.tap:active { background: var(--cell-2); opacity: 1; }
+        .row .info { flex: 1; min-width: 0; }
+        .row .title { font-size: 17px; }
+        .row .name { font-weight: 600; }
+        .row .sub { font-size: 15px; color: var(--label-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -0.24px; }
+        .row .meta { font-size: 13px; color: var(--label-2); margin-top: 1px; }
+        .row .val { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+        .row .val small { display: block; font-size: 12px; font-weight: 400; color: var(--label-2); }
+        .row .na { font-size: 15px; color: var(--label-3); }
+        .chev { color: var(--label-3); font-size: 14px; }
+        .row input, .row select { background: none; border: 0; outline: 0; color: var(--label-2); font: inherit; font-size: 17px; text-align: right; min-width: 0; }
+        .row select { -webkit-appearance: none; appearance: none; text-align-last: right; padding-right: 2px; cursor: pointer; }
+        .row .field-wrap { flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 6px; color: var(--label-3); }
+        .row .field-wrap input { width: 100%; }
+        .empty-row { padding: 14px 16px; font-size: 15px; color: var(--label-2); line-height: 1.35; }
+        .stale { color: var(--orange); }
+        .error { color: var(--red); }
+        .muted { color: var(--label-2); }
+
+        /* ---------- Screens with an iOS large title ---------- */
         #app { flex: 1; display: flex; flex-direction: column; min-height: 0; }
         .views { flex: 1; position: relative; min-height: 0; }
-        .view { position: absolute; inset: 0; overflow-y: auto; }
-        .page { padding: calc(18px + var(--top)) 16px 24px; display: flex; flex-direction: column; gap: 18px; }
-        .tabbar { display: flex; border-top: 1px solid var(--glass-border); background: rgba(12, 12, 12, 0.96);
-            padding-bottom: var(--bottom); flex-shrink: 0; }
-        .tab { flex: 1; background: none; border: 0; padding: 9px 0 8px; display: flex; flex-direction: column; align-items: center; gap: 3px;
-            font-size: 11px; color: var(--text-dim); cursor: pointer; }
-        .tab svg { width: 24px; height: 24px; }
-        .tab.active { color: var(--accent); }
-
-        /* ---------- Home ---------- */
-        .hello { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-        .hello h1 { margin: 0; font-size: 28px; line-height: 1.15; }
-        .hello .sub { font-size: 14px; color: var(--text-dim); margin-top: 2px; }
-        .avatar { width: 42px; height: 42px; border-radius: 50%; border: 0; background: rgba(0, 212, 255, 0.18); color: var(--accent);
-            font-weight: 700; font-size: 17px; cursor: pointer; overflow: hidden; flex-shrink: 0; display: grid; place-items: center; }
+        .view { position: absolute; inset: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; padding-bottom: calc(84px + var(--bottom)); }
+        .navbar { position: sticky; top: 0; z-index: 5; height: calc(44px + var(--top)); padding-top: var(--top);
+            display: flex; align-items: center; justify-content: center; transition: background .2s; border-bottom: .5px solid transparent; }
+        .navbar .t { font-size: 17px; font-weight: 600; opacity: 0; transition: opacity .2s; }
+        .view.scrolled .navbar { background: var(--bar); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); border-bottom-color: var(--sep); }
+        .view.scrolled .navbar .t { opacity: 1; }
+        .page { padding: 0 16px 24px; display: flex; flex-direction: column; gap: 22px; }
+        .large-title { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: -2px; }
+        .large-title h1 { margin: 0; font-size: 34px; font-weight: 700; letter-spacing: 0.37px; line-height: 1.2; }
+        .large-title .sub { font-size: 15px; color: var(--label-2); margin-top: 1px; letter-spacing: -0.24px; }
+        .avatar { width: 40px; height: 40px; border-radius: 50%; border: 0; flex-shrink: 0; display: grid; place-items: center; overflow: hidden;
+            background: linear-gradient(180deg, #a1a1a6, #6e6e73); color: #fff; font-weight: 600; font-size: 17px; cursor: pointer; }
         .avatar img { width: 100%; height: 100%; object-fit: cover; }
-        .avatar.big { width: 64px; height: 64px; font-size: 26px; cursor: default; }
+        .avatar svg { width: 60%; height: 60%; }
+        .avatar.big { width: 60px; height: 60px; font-size: 24px; cursor: default; }
 
-        .card { background: var(--card); border: 1px solid var(--glass-border); border-radius: 20px; padding: 16px; }
-        .hero { background: linear-gradient(160deg, rgba(61, 220, 132, 0.16), rgba(0, 212, 255, 0.06) 60%), var(--card); }
-        .hero .label { font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); }
-        .hero .big { font-size: 52px; font-weight: 700; color: var(--good); line-height: 1.05; margin: 6px 0 2px; font-variant-numeric: tabular-nums; }
-        .hero .big small { font-size: 18px; color: var(--text-dim); font-weight: 400; margin-left: 4px; }
-        .hero .where { font-weight: 700; font-size: 17px; }
-        .hero .addr { font-size: 14px; color: var(--text-dim); }
-        .hero .meta { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
-        .hero .actions { display: flex; gap: 8px; margin-top: 14px; }
+        /* ---------- Home hero card ---------- */
+        .hero { border-radius: 20px; padding: 18px; background:
+            radial-gradient(120% 90% at 100% 0%, rgba(0, 212, 255, 0.22), transparent 60%),
+            radial-gradient(90% 80% at 0% 100%, rgba(48, 209, 88, 0.16), transparent 60%), var(--cell); }
+        .hero .label { font-size: 13px; font-weight: 600; text-transform: uppercase; color: var(--label-2); letter-spacing: -0.08px; }
+        .hero .big { font-size: 64px; font-weight: 700; letter-spacing: -1.5px; line-height: 1; margin: 10px 0 6px; font-variant-numeric: tabular-nums; }
+        .hero .big .cents { font-size: 32px; letter-spacing: -0.5px; vertical-align: top; position: relative; top: 5px; }
+        .hero .big small { font-size: 17px; font-weight: 500; color: var(--label-2); letter-spacing: -0.4px; margin-left: 4px; }
+        .hero .where { font-weight: 600; font-size: 20px; letter-spacing: 0.38px; }
+        .hero .addr { font-size: 15px; color: var(--label-2); letter-spacing: -0.24px; }
+        .hero .meta { font-size: 13px; color: var(--label-2); margin-top: 6px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+        .pill { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 999px; background: rgba(48, 209, 88, 0.18); color: var(--green); }
+        .pill.orange { background: rgba(255, 159, 10, 0.18); color: var(--orange); }
+        .hero .actions { display: flex; gap: 10px; margin-top: 16px; }
         .hero .actions .btn { flex: 1; }
-        .hero .empty { padding: 18px 0 6px; color: var(--text-dim); line-height: 1.45; }
-        .checked { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-dim); margin-top: 12px; }
+        .hero .empty { padding: 14px 0 4px; color: var(--label-2); line-height: 1.4; font-size: 15px; }
+        .checked { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--label-2); margin-top: 12px; padding-top: 10px; border-top: .5px solid var(--sep); }
+        .checked .text-btn { font-size: 15px; padding: 0; display: inline-flex; gap: 4px; align-items: center; }
+        .spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--label-3); border-top-color: var(--label); animation: spin .8s linear infinite; display: inline-block; vertical-align: -2px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .skeleton { height: 64px; margin: 10px 0 6px; width: 60%; border-radius: 10px; background: linear-gradient(90deg, var(--cell-2), #3a3a3c, var(--cell-2)); background-size: 200% 100%; animation: shimmer 1.2s infinite; }
+        @keyframes shimmer { to { background-position: -200% 0; } }
 
-        .section-title { display: flex; justify-content: space-between; align-items: baseline; margin: 0 0 4px; }
-        .section-title h2 { margin: 0; font-size: 18px; }
-        .mini { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); cursor: pointer; }
-        .mini:last-child { border-bottom: 0; }
-        .mini .info { flex: 1; min-width: 0; }
-        .mini .name { font-weight: 700; }
-        .mini .addr { font-size: 13px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .mini .val { font-size: 19px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; text-align: right; }
-        .mini .val small { display: block; font-size: 11px; font-weight: 400; color: var(--text-dim); }
-        .nudge { display: flex; gap: 12px; align-items: center; }
-        .nudge img { width: 44px; height: 44px; border-radius: 11px; }
-        .nudge .info { flex: 1; font-size: 14px; color: var(--text-dim); }
-        .nudge .info b { color: var(--text-main); display: block; font-size: 15px; }
-        .x { background: none; border: 0; color: var(--text-dim); font-size: 20px; cursor: pointer; padding: 4px 8px; }
+        .nudge { display: flex; gap: 12px; align-items: center; padding: 12px 12px 12px 14px; border-radius: 16px; background: var(--cell); }
+        .nudge img { width: 44px; height: 44px; border-radius: 10px; }
+        .nudge .info { flex: 1; font-size: 13px; color: var(--label-2); }
+        .nudge .info b { color: var(--label); display: block; font-size: 15px; font-weight: 600; }
+        .x { background: var(--fill); border: 0; color: var(--label-2); width: 26px; height: 26px; border-radius: 50%; font-size: 15px; cursor: pointer; display: grid; place-items: center; }
 
-        /* ---------- Map ---------- */
-        #view-map { display: flex; flex-direction: column; overflow: hidden; }
-        #map { height: 38%; width: 100%; z-index: 1; flex-shrink: 0; background: #111; }
-        .dark-tiles { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9); }
-        .sheet { flex: 1; overflow-y: auto; margin-top: -20px; z-index: 2; position: relative; background: var(--glass-bg);
-            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--glass-border);
-            border-radius: 20px 20px 0 0; padding: 18px 16px 24px; }
-        .sheet h1 { margin: 0; font-size: 24px; }
-        .status { margin: 2px 0 14px; font-size: 13px; font-weight: 300; color: var(--text-dim); }
-        .sheet .chips { margin: 14px 0; }
-        .station { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); cursor: pointer; }
-        .station .info { flex: 1; min-width: 0; }
-        .station .name { font-weight: 700; }
-        .station .addr { font-size: 13px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .station .meta { font-size: 12px; color: var(--text-dim); margin-top: 2px; }
-        .station .price { text-align: right; font-variant-numeric: tabular-nums; }
-        .station .price .val { font-size: 22px; font-weight: 700; color: var(--accent); }
-        .station .price .na { font-size: 13px; color: var(--text-dim); }
-        .station.best .price .val { color: var(--good); }
-        .badge { display: inline-block; font-size: 11px; font-weight: 700; color: #000; background: var(--good); border-radius: 6px; padding: 1px 6px; margin-left: 6px; }
-        .go { font-size: 13px; color: var(--accent); text-decoration: none; }
-        .star { background: none; border: 0; font-size: 22px; color: var(--text-dim); cursor: pointer; padding: 4px; line-height: 1; }
-        .star.on { color: #ffd34d; }
-        .loader { text-align: center; font-size: 14px; color: var(--text-dim); padding: 24px 0; }
-        .credit { font-size: 11px; color: var(--text-dim); text-align: center; margin-top: 16px; }
+        /* ---------- Map + bottom sheet ---------- */
+        #view-map { overflow: hidden; display: flex; flex-direction: column; padding: 0; }
+        #map { height: 42%; width: 100%; z-index: 1; flex-shrink: 0; background: #1a1a1a; }
+        .map-fade { position: absolute; top: 0; left: 0; right: 0; height: calc(var(--top) + 30px); z-index: 2; pointer-events: none; background: linear-gradient(rgba(0,0,0,.55), transparent); }
+        .dark-tiles { filter: invert(1) hue-rotate(180deg) brightness(0.85) contrast(0.9) saturate(0.6); }
+        .sheet { flex: 1; overflow-y: auto; margin-top: -14px; z-index: 3; position: relative; background: var(--bg);
+            border-radius: 14px 14px 0 0; padding: 6px 16px calc(96px + var(--bottom)); box-shadow: 0 -8px 24px rgba(0,0,0,.5); }
+        .grabber { width: 36px; height: 5px; border-radius: 3px; background: var(--label-3); margin: 0 auto 12px; }
+        .sheet h1 { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: 0.36px; }
+        .status { margin: 2px 0 12px; font-size: 15px; color: var(--label-2); letter-spacing: -0.24px; }
+        .sheet .segmented { margin: 12px 0 16px; }
+        .star { background: none; border: 0; color: var(--label-3); cursor: pointer; padding: 6px; margin: -6px; font-size: 22px; display: grid; place-items: center; }
+        .star.on { color: var(--yellow); }
+        .badge { display: inline-block; font-size: 11px; font-weight: 700; color: #000; background: var(--green); border-radius: 5px; padding: 1px 5px; margin-left: 6px; vertical-align: 2px; letter-spacing: 0; }
+        .best .val { color: var(--green); }
+        .go { font-size: 13px; color: var(--tint); text-decoration: none; font-weight: 500; }
+        .credit { font-size: 12px; color: var(--label-3); text-align: center; margin-top: 18px; }
+        .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--cell-2); color: var(--label); box-shadow: 0 4px 16px rgba(0,0,0,.5); }
+        .leaflet-popup-content { font-family: inherit; font-size: 14px; margin: 10px 14px; }
+        .leaflet-container a.leaflet-popup-close-button { color: var(--label-2); }
+        .leaflet-control-attribution { background: rgba(0,0,0,.5) !important; color: var(--label-3) !important; font-size: 9px; }
+        .leaflet-control-attribution a { color: var(--label-2) !important; }
 
-        /* ---------- Account ---------- */
-        .profile { display: flex; align-items: center; gap: 14px; }
-        .profile .who { flex: 1; min-width: 0; }
-        .profile .who b { font-size: 19px; display: block; }
-        .profile .who span { color: var(--text-dim); font-size: 14px; overflow-wrap: anywhere; }
-        .setting { display: flex; flex-direction: column; gap: 8px; }
-        .setting label { font-size: 13px; color: var(--text-dim); }
-        .steps { margin: 8px 0 0; padding-left: 20px; line-height: 1.6; color: var(--text-dim); }
-        .steps b { color: var(--text-main); }
+        /* ---------- Translucent tab bar ---------- */
+        .tabbar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 10; display: flex; padding: 0 0 var(--bottom);
+            background: var(--bar); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); border-top: .5px solid var(--sep); }
+        .tab { flex: 1; background: none; border: 0; height: 50px; padding-top: 6px; display: flex; flex-direction: column; align-items: center; gap: 2px;
+            font-size: 10px; font-weight: 500; letter-spacing: 0.1px; color: #8e8e93; cursor: pointer; }
+        .tab svg { width: 26px; height: 26px; }
+        .tab .fill { display: none; }
+        .tab.active { color: var(--tint); }
+        .tab.active .fill { display: block; }
+        .tab.active .line { display: none; }
+
+        /* ---------- Welcome ---------- */
+        .welcome { flex: 1; overflow-y: auto; display: flex; flex-direction: column; justify-content: space-between; gap: 28px;
+            padding: calc(64px + var(--top)) 24px calc(24px + var(--bottom));
+            background: radial-gradient(90% 50% at 50% 22%, rgba(0, 212, 255, 0.18), transparent 70%), var(--bg); }
+        .brand { text-align: center; margin-top: 8vh; }
+        .brand .logo { width: 96px; height: 96px; border-radius: 22px; box-shadow: 0 12px 40px rgba(0, 212, 255, 0.25); }
+        .brand h1 { font-size: 34px; font-weight: 700; margin: 20px 0 6px; letter-spacing: 0.37px; }
+        .brand p { margin: 0 auto; max-width: 290px; color: var(--label-2); line-height: 1.35; }
+        .features { max-width: 340px; margin: 28px auto 0; display: flex; flex-direction: column; gap: 18px; text-align: left; }
+        .feature { display: flex; gap: 14px; align-items: flex-start; }
+        .feature .ic { width: 30px; height: 30px; color: var(--tint); flex-shrink: 0; display: grid; place-items: center; font-size: 26px; }
+        .feature b { display: block; font-size: 15px; font-weight: 600; letter-spacing: -0.24px; }
+        .feature span { font-size: 15px; color: var(--label-2); letter-spacing: -0.24px; line-height: 1.3; }
+        .auth { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 380px; margin: 0 auto; }
+        .auth .divider { text-align: center; font-size: 13px; color: var(--label-2); margin: 4px 0; }
+        .auth-error { color: var(--red); font-size: 15px; text-align: center; min-height: 1em; }
+        .field { width: 100%; height: 50px; padding: 0 16px; border-radius: 12px; border: 0; background: var(--cell); color: var(--label); font: inherit; font-size: 17px; }
+        .field::placeholder { color: var(--label-3); }
+
+        @media (min-width: 700px) {
+            /* On a computer, show it at phone width */
+            #shell { max-width: 430px; margin: 0 auto; border-left: .5px solid var(--sep); border-right: .5px solid var(--sep); }
+        }
     </style>
 </head>
 <body>
+<!-- SF Symbols-style icons -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-search" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="M10.5 4a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13zM15.5 15.5 20 20"/></symbol>
+    <symbol id="i-location" viewBox="0 0 24 24"><path fill="currentColor" d="M20.6 3.4c.4.4.5 1 .3 1.5l-7 15.4c-.5 1-1.9.9-2.2-.1l-1.6-5.4-5.4-1.6c-1-.3-1.1-1.7-.1-2.2l15.4-7c.5-.2 1.1-.1 1.5.3z"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="m12 3.2 2.6 5.5 6 .7-4.4 4.1 1.2 5.9L12 16.5l-5.4 2.9 1.2-5.9-4.4-4.1 6-.7z"/></symbol>
+    <symbol id="i-star-fill" viewBox="0 0 24 24"><path fill="currentColor" d="m12 3.2 2.6 5.5 6 .7-4.4 4.1 1.2 5.9L12 16.5l-5.4 2.9 1.2-5.9-4.4-4.1 6-.7z"/></symbol>
+    <symbol id="i-car" viewBox="0 0 24 24"><path fill="currentColor" d="M5.3 6.7C5.7 5.7 6.6 5 7.7 5h8.6c1.1 0 2 .7 2.4 1.7L20 10.2c.6.3 1 .9 1 1.6V17a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H6v1a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-5.2c0-.7.4-1.3 1-1.6zM7 13.5a1.3 1.3 0 1 0 0-2.6 1.3 1.3 0 0 0 0 2.6zm10 0a1.3 1.3 0 1 0 0-2.6 1.3 1.3 0 0 0 0 2.6zM6.4 9.5h11.2l-1-2.5c-.1-.3-.4-.5-.7-.5H8.1c-.3 0-.6.2-.7.5z"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3M19.5 4v4.5H15"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" d="m9 5 7 7-7 7"/></symbol>
+    <symbol id="i-person" viewBox="0 0 24 24"><path fill="currentColor" d="M12 12.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zm0 2c-4.4 0-8 2.3-8 5.2 0 .7.6 1.3 1.3 1.3h13.4c.7 0 1.3-.6 1.3-1.3 0-2.9-3.6-5.2-8-5.2z"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path fill="currentColor" d="M3 5.5V11c0 .5.2 1 .6 1.4l8 8c.8.8 2 .8 2.8 0l5.6-5.6c.8-.8.8-2 0-2.8l-8-8C11.6 3.2 11 3 10.5 3H5.5A2.5 2.5 0 0 0 3 5.5zM7.5 9a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></symbol>
+    <symbol id="i-map" viewBox="0 0 24 24"><path fill="currentColor" d="M9 4 3.6 6.1c-.4.1-.6.5-.6.9v12.6c0 .7.7 1.2 1.4.9L9 18.8l6 2 5.4-2.1c.4-.1.6-.5.6-.9V5.2c0-.7-.7-1.2-1.4-.9L15 6zm1 2.3 4 1.3v11.1l-4-1.3z"/></symbol>
+</svg>
+
 <div id="shell">
 
-    <!-- Welcome / sign in -->
+    <!-- Welcome -->
     <section class="welcome" id="welcome" hidden>
         <div class="brand">
             <img class="logo" src="/static/icons/icon-192.png" alt="">
             <h1>GassyBot</h1>
-            <p>Find the cheapest gas around you, with station prices from Google Maps.</p>
+            <p>The cheapest gas around you, at a glance.</p>
+            <div class="features">
+                <div class="feature"><div class="ic"><svg class="i"><use href="#i-tag"/></svg></div><div><b>Real station prices</b><span>Regular, midgrade, premium and diesel, straight from Google Maps.</span></div></div>
+                <div class="feature"><div class="ic"><svg class="i"><use href="#i-map"/></svg></div><div><b>Everything nearby on a map</b><span>Cheapest first, with directions one tap away.</span></div></div>
+                <div class="feature"><div class="ic"><svg class="i"><use href="#i-star-fill"/></svg></div><div><b>Save your regular stations</b><span>Keep an eye on the places you actually fill up.</span></div></div>
+            </div>
         </div>
-        <div class="auth" id="auth-options">
-            <button class="btn white block" type="button" id="google-btn">
-                <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.8c4.3-4 6.9-9.9 6.9-17.2z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.4-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.2 0-11.5-4.1-13.4-9.8l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>
-                Continue with Google
-            </button>
-            <div class="divider">or use email</div>
-            <form id="email-form" class="auth">
-                <input class="field" id="email-input" type="email" autocomplete="email" placeholder="Email" required>
-                <input class="field" id="password-input" type="password" autocomplete="current-password" placeholder="Password (6+ characters)" required minlength="6">
-                <button class="btn block" type="submit" id="email-signin">Sign in</button>
-                <button class="btn ghost block" type="button" id="email-signup">Create account</button>
-                <button class="linkish dim" type="button" id="forgot-btn">Forgot password?</button>
+
+        <div>
+            <!-- Firebase sign-in, only shown when the server has a Firebase project -->
+            <div class="auth" id="auth-options">
+                <button class="btn white block" type="button" id="google-btn">
+                    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.8c4.3-4 6.9-9.9 6.9-17.2z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.4-5.8c-2.1 1.4-4.8 2.3-8.4 2.3-6.2 0-11.5-4.1-13.4-9.8l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>
+                    Continue with Google
+                </button>
+                <div class="divider">or use email</div>
+                <form id="email-form" class="auth">
+                    <input class="field" id="email-input" type="email" autocomplete="email" placeholder="Email" required>
+                    <input class="field" id="password-input" type="password" autocomplete="current-password" placeholder="Password (6+ characters)" required minlength="6">
+                    <button class="btn block" type="submit">Sign In</button>
+                    <button class="btn gray block" type="button" id="email-signup">Create Account</button>
+                    <button class="text-btn dim" type="button" id="forgot-btn">Forgot password?</button>
+                </form>
+            </div>
+            <!-- On-device profile, used when there's no Firebase -->
+            <form class="auth" id="local-start">
+                <input class="field" id="name-input" type="text" autocomplete="given-name" placeholder="Your first name (optional)" maxlength="30">
+                <button class="btn block" type="submit">Get Started</button>
             </form>
-        </div>
-        <div class="auth">
-            <div class="auth-error" id="auth-error" role="alert"></div>
-            <button class="linkish" type="button" id="guest-btn">Continue without an account</button>
+            <div class="auth">
+                <div class="auth-error" id="auth-error" role="alert"></div>
+                <button class="text-btn" type="button" id="guest-btn">Continue without an account</button>
+            </div>
         </div>
     </section>
 
@@ -196,39 +277,39 @@
 
             <!-- Home -->
             <section class="view" id="view-home">
+                <div class="navbar"><span class="t">GassyBot</span></div>
                 <div class="page">
-                    <div class="hello">
+                    <div class="large-title">
                         <div>
-                            <h1 id="greeting">Good evening</h1>
                             <div class="sub" id="today"></div>
+                            <h1 id="greeting">Good evening</h1>
                         </div>
-                        <button class="avatar" id="home-avatar" type="button" aria-label="Account"></button>
+                        <button class="avatar" id="home-avatar" type="button" aria-label="Account" data-goto="account"></button>
                     </div>
 
-                    <div class="card nudge" id="install-nudge" hidden>
+                    <div class="nudge" id="install-nudge" hidden>
                         <img src="/static/icons/icon-192.png" alt="">
-                        <div class="info"><b>Put GassyBot on your Home Screen</b>Open it like an app, full screen.</div>
-                        <button class="btn small" type="button" id="nudge-how">How</button>
-                        <button class="x" type="button" id="nudge-close" aria-label="Dismiss">×</button>
+                        <div class="info"><b>Add GassyBot to your Home Screen</b>It opens full screen, like any other app.</div>
+                        <button class="btn sm" type="button" id="nudge-how">How</button>
+                        <button class="x" type="button" id="nudge-close" aria-label="Dismiss">✕</button>
                     </div>
 
-                    <div class="card hero" id="hero"></div>
+                    <div class="hero" id="hero"></div>
 
-                    <form class="search" id="home-search">
-                        <input class="field" id="home-search-input" type="search" inputmode="search" placeholder="Search a zip code or town" autocomplete="off">
-                        <button class="btn" type="submit">Go</button>
+                    <form class="searchbar" id="home-search">
+                        <label><svg class="i"><use href="#i-search"/></svg><input id="home-search-input" type="search" inputmode="search" enterkeyhint="search" placeholder="Zip code or town" autocomplete="off"></label>
                     </form>
 
-                    <div class="chips" id="home-chips"></div>
+                    <div class="segmented" id="home-fuels" role="group" aria-label="Fuel type"></div>
 
                     <div>
-                        <div class="section-title"><h2>Also cheap nearby</h2><button class="linkish" type="button" data-goto="map">See all</button></div>
-                        <div id="runners-up"></div>
+                        <div class="group-title row-title"><span>Also cheap nearby</span><button class="text-btn" type="button" data-goto="map">See All</button></div>
+                        <div class="list" id="runners-up"></div>
                     </div>
 
                     <div>
-                        <div class="section-title"><h2>Saved stations</h2></div>
-                        <div id="favorites"></div>
+                        <div class="group-title">Saved stations</div>
+                        <div class="list" id="favorites"></div>
                     </div>
                 </div>
             </section>
@@ -236,65 +317,81 @@
             <!-- Map -->
             <section class="view" id="view-map" hidden>
                 <div id="map"></div>
+                <div class="map-fade"></div>
                 <div class="sheet">
+                    <div class="grabber"></div>
                     <h1>Gas Near Me</h1>
                     <div class="status" id="status">Finding your location…</div>
-                    <form class="search" id="search-form">
-                        <input class="field" id="search-input" type="search" inputmode="search" placeholder="Zip code or town" autocomplete="off">
-                        <button class="btn" type="submit">Go</button>
-                        <button class="btn ghost" type="button" id="locate-btn" aria-label="Use my location">📍</button>
+                    <form class="searchbar" id="search-form">
+                        <label><svg class="i"><use href="#i-search"/></svg><input id="search-input" type="search" inputmode="search" enterkeyhint="search" placeholder="Zip code or town" autocomplete="off"></label>
+                        <button class="icon-btn" type="button" id="locate-btn" aria-label="Use my location"><svg class="i"><use href="#i-location"/></svg></button>
                     </form>
-                    <div class="chips" id="chips"></div>
-                    <div id="list"><div class="loader">Loading nearby stations…</div></div>
+                    <div class="segmented" id="map-fuels" role="group" aria-label="Fuel type"></div>
+                    <div class="list" id="list"></div>
                     <div class="credit">Prices from Google Maps</div>
                 </div>
             </section>
 
             <!-- Account -->
             <section class="view" id="view-account" hidden>
+                <div class="navbar"><span class="t">Account</span></div>
                 <div class="page">
-                    <h1 style="margin:0;font-size:28px">Account</h1>
-                    <div class="card profile">
-                        <div class="avatar big" id="account-avatar"></div>
-                        <div class="who"><b id="account-name">Guest</b><span id="account-email">Not signed in</span></div>
-                    </div>
-                    <button class="btn block" type="button" id="account-signin">Sign in to save stations on all your devices</button>
+                    <div class="large-title"><h1>Account</h1></div>
 
-                    <div class="card setting">
-                        <label for="fuel-select">Fuel I usually buy</label>
-                        <select class="field" id="fuel-select"></select>
-                    </div>
-                    <form class="card setting" id="home-zip-form">
-                        <label for="home-zip">Home zip code, used when location is off</label>
-                        <div class="search">
-                            <input class="field" id="home-zip" inputmode="numeric" placeholder="e.g. 10001" autocomplete="postal-code">
-                            <button class="btn" type="submit">Save</button>
+                    <div class="list">
+                        <div class="row" style="padding:14px 16px">
+                            <div class="avatar big" id="account-avatar"></div>
+                            <div class="info">
+                                <div class="title name" id="account-name">Guest</div>
+                                <div class="sub" id="account-email">On this phone</div>
+                            </div>
                         </div>
-                        <span class="muted" id="home-zip-msg" style="font-size:13px"></span>
-                    </form>
-
-                    <div class="card" id="install-card">
-                        <div class="section-title"><h2>Install on your phone</h2></div>
-                        <div id="install-body"></div>
                     </div>
 
-                    <button class="btn ghost block" type="button" id="signout-btn">Sign out</button>
-                    <div class="credit">Prices from Google Maps · Map © OpenStreetMap</div>
+                    <div>
+                        <div class="group-title">Profile</div>
+                        <div class="list">
+                            <label class="row" id="name-row">
+                                <span class="title">Name</span>
+                                <span class="field-wrap"><input id="name-field" type="text" maxlength="30" placeholder="Add your name" autocomplete="given-name"></span>
+                            </label>
+                            <label class="row">
+                                <span class="title">Usual fuel</span>
+                                <span class="field-wrap"><select id="fuel-select"></select><svg class="i chev"><use href="#i-chev"/></svg></span>
+                            </label>
+                            <label class="row">
+                                <span class="title">Home zip</span>
+                                <span class="field-wrap"><input id="home-zip" inputmode="numeric" placeholder="e.g. 10001" autocomplete="postal-code" maxlength="10"></span>
+                            </label>
+                        </div>
+                        <div class="group-foot">Your home zip is used when location is turned off. Everything here is saved on this phone.</div>
+                    </div>
+
+                    <div>
+                        <div class="group-title">Install on your phone</div>
+                        <div class="list"><div class="empty-row" id="install-body"></div></div>
+                    </div>
+
+                    <div class="list" id="account-actions">
+                        <button class="row tap text-btn" type="button" id="account-signin" style="width:100%;justify-content:center">Sign In to Sync Across Devices</button>
+                        <button class="row tap text-btn" type="button" id="signout-btn" style="width:100%;justify-content:center;color:var(--red)">Sign Out</button>
+                    </div>
+                    <div class="credit">GassyBot · Prices from Google Maps · Map © OpenStreetMap</div>
                 </div>
             </section>
         </div>
 
         <nav class="tabbar">
             <button class="tab active" type="button" data-goto="home">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+                <svg viewBox="0 0 24 24"><path class="line" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M3.5 10.5 12 3.5l8.5 7V19a1.5 1.5 0 0 1-1.5 1.5h-4v-6H9v6H5A1.5 1.5 0 0 1 3.5 19z"/><path class="fill" fill="currentColor" d="M11.1 2.8a1.4 1.4 0 0 1 1.8 0l8.2 6.8c.6.5.9 1.2.9 2V19a2.5 2.5 0 0 1-2.5 2.5h-3.6V15a1 1 0 0 0-1-1h-5.8a1 1 0 0 0-1 1v6.5H4.5A2.5 2.5 0 0 1 2 19v-7.4c0-.8.3-1.5.9-2z"/></svg>
                 Home
             </button>
             <button class="tab" type="button" data-goto="map">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+                <svg viewBox="0 0 24 24"><path class="line" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle class="line" cx="12" cy="9.5" r="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path class="fill" fill="currentColor" fill-rule="evenodd" d="M12 1.8a7.8 7.8 0 0 0-7.8 7.7c0 5.8 7.1 12 7.2 12.1.3.3.9.3 1.2 0 .1-.1 7.2-6.3 7.2-12.1A7.8 7.8 0 0 0 12 1.8zm0 10.7a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg>
                 Map
             </button>
             <button class="tab" type="button" data-goto="account">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+                <svg viewBox="0 0 24 24"><circle class="line" cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="1.8"/><path class="line" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M4.5 20.5c1.2-3.4 4-5.3 7.5-5.3s6.3 1.9 7.5 5.3"/><use class="fill" href="#i-person"/></svg>
                 Account
             </button>
         </nav>
@@ -308,12 +405,13 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
     {% endif %}
-    <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         const FUELS = ['Regular', 'Midgrade', 'Premium', 'Diesel'];
+        const STALE_MS = 10 * 60 * 1000;
         const $ = id => document.getElementById(id);
         const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        const icon = (id, cls = '') => `<svg class="i ${cls}"><use href="#i-${id}"/></svg>`;
 
         // ---------- Saved settings (this phone, plus Firestore when signed in) ----------
         const store = {
@@ -323,14 +421,16 @@
         };
         const state = {
             user: null,
-            prefs: Object.assign({ fuel: 'Regular', homeZip: '', favorites: [] }, store.get('gassy-prefs', {})),
-            results: null,   // { stations, origin, label, nearMe, at }
+            prefs: Object.assign({ name: '', fuel: 'Regular', homeZip: '', favorites: [] }, store.get('gassy-prefs', {})),
+            // The last prices we got, so the app has something to show the moment it opens
+            results: store.get('gassy-last', null),   // { stations, origin, label, nearMe, at }
             loading: false,
+            slow: false,     // the free server is waking up
             error: '',
             tab: 'home',
         };
 
-        // Firebase is optional: without a config the app works as guest-only
+        // Firebase is optional: without a config the app keeps a simple profile on the phone
         let fb = null;
         if (window.firebase && window.FIREBASE_CONFIG) {
             try { firebase.initializeApp(window.FIREBASE_CONFIG); fb = firebase; } catch (e) { console.error(e); }
@@ -374,6 +474,7 @@
             const h = Math.round(min / 60);
             return h < 24 ? `${h}h ago` : `${Math.round(h / 24)}d ago`;
         }
+        const money = p => '$' + p.toFixed(2);
         function directionsUrl(s) {
             // Apple Maps opens natively on iPhone and redirects to Google Maps elsewhere
             return `https://maps.apple.com/?daddr=${s.lat},${s.lng}&q=${encodeURIComponent(s.name)}`;
@@ -393,15 +494,15 @@
         const isFav = id => state.prefs.favorites.some(f => f.id === id);
         const firstName = () => {
             const u = state.user;
-            if (!u) return '';
-            if (u.displayName) return u.displayName.split(' ')[0];
-            return u.email ? u.email.split('@')[0] : '';
+            if (u && u.displayName) return u.displayName.split(' ')[0];
+            if (state.prefs.name) return state.prefs.name.trim().split(' ')[0];
+            return u && u.email ? u.email.split('@')[0] : '';
         };
         const isStandalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
         const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
 
-        function chipsHtml() {
-            return FUELS.map(f => `<button class="chip ${f === state.prefs.fuel ? 'active' : ''}" type="button" data-fuel="${f}">${f}</button>`).join('');
+        function fuelsHtml() {
+            return FUELS.map(f => `<button class="${f === state.prefs.fuel ? 'on' : ''}" type="button" data-fuel="${f}" aria-pressed="${f === state.prefs.fuel}">${f}</button>`).join('');
         }
         function setFuel(f) {
             state.prefs.fuel = f;
@@ -414,6 +515,8 @@
             state.loading = true;
             state.error = '';
             renderAll();
+            // A free server sleeps when idle; say so if it's taking a while
+            const slowTimer = setTimeout(() => { state.slow = true; renderAll(); }, 4000);
             try {
                 const rsp = await fetch(url);
                 const data = await rsp.json();
@@ -421,12 +524,15 @@
                 const stations = data.stations;
                 stations.forEach(s => { if (origin && s.lat != null) s.dist = miles(origin, s); });
                 state.results = { stations, origin, label, nearMe: !!origin, at: Date.now() };
+                store.set('gassy-last', state.results);
                 refreshFavorites(stations);
             } catch (err) {
                 console.error(err);
-                state.error = err.message || 'Could not load stations.';
+                state.error = navigator.onLine === false ? "You're offline. Showing the last prices you checked." : (err.message || 'Could not load stations.');
             }
+            clearTimeout(slowTimer);
             state.loading = false;
+            state.slow = false;
             renderAll();
             fitMap();
         }
@@ -453,6 +559,12 @@
             return load(`/api/search?q=${encodeURIComponent(q)}`, `near ${q}`, null);
         }
 
+        function refresh() {
+            const r = state.results;
+            if (r && !r.nearMe) search(r.label.replace(/^near /, ''));
+            else locate();
+        }
+
         // Saved stations keep the last price we saw for them
         function refreshFavorites(stations) {
             let changed = false;
@@ -470,70 +582,84 @@
                 if (!s) return;
                 state.prefs.favorites.push({ id: s.id, name: s.name, address: s.address, lat: s.lat, lng: s.lng, prices: s.prices, seenAt: Date.now() });
             }
+            if (navigator.vibrate) navigator.vibrate(8);
             savePrefs();
             renderAll();
         }
 
         // ---------- Home ----------
+        function loadingText() {
+            return state.slow ? 'Waking up GassyBot… this can take up to a minute after it has been idle.' : 'Finding stations around you…';
+        }
+
         function renderHome() {
             const h = new Date().getHours();
-            const part = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+            const part = h < 5 ? 'Good evening' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
             $('greeting').textContent = firstName() ? `${part}, ${firstName()}` : part;
-            $('today').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+            $('today').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase();
             renderAvatar($('home-avatar'));
-            $('home-chips').innerHTML = chipsHtml();
+            $('home-fuels').innerHTML = fuelsHtml();
             $('install-nudge').hidden = isStandalone() || store.get('gassy-nudge-closed', false);
 
-            const fuel = state.prefs.fuel;
+            const fuel = state.prefs.fuel, fl = fuel.toLowerCase();
             const sorted = sortedStations();
             const priced = sorted.filter(s => s.prices[fuel]);
             const r = state.results;
-            const checked = r ? `<div class="checked"><span>Checked ${agoText(r.at)}</span><button class="linkish" type="button" id="refresh-btn">Refresh</button></div>` : '';
+            let footer = '';
+            if (state.loading && r) footer = `<div class="checked"><span><span class="spin"></span>&nbsp; ${state.slow ? 'Waking up the server…' : 'Updating…'}</span></div>`;
+            else if (r) footer = `<div class="checked"><span>${state.error ? `<span class="error">${esc(state.error)}</span>` : `Checked ${agoText(r.at)}`}</span><button class="text-btn" type="button" id="refresh-btn">${icon('refresh')} Refresh</button></div>`;
 
             if (state.loading && !r) {
-                $('hero').innerHTML = `<div class="label">Cheapest ${fuel.toLowerCase()} near you</div><div class="empty">Finding stations around you…</div>`;
-            } else if (!r || (state.error && !r)) {
-                $('hero').innerHTML = `<div class="label">Cheapest ${fuel.toLowerCase()} near you</div>
+                $('hero').innerHTML = `<div class="label">Cheapest ${fl} near you</div><div class="skeleton"></div><div class="empty">${loadingText()}</div>`;
+            } else if (!r) {
+                $('hero').innerHTML = `<div class="label">Cheapest ${fl} near you</div>
                     <div class="empty ${state.error ? 'error' : ''}">${esc(state.error || 'Allow location to see prices around you.')}</div>
-                    <div class="actions"><button class="btn" type="button" id="hero-locate">📍 Use my location</button></div>`;
+                    <div class="actions"><button class="btn" type="button" id="hero-locate">${icon('location')} Use My Location</button></div>`;
             } else if (!priced.length) {
-                $('hero').innerHTML = `<div class="label">Cheapest ${fuel.toLowerCase()} ${esc(r.label)}</div>
-                    <div class="empty">None of the ${r.stations.length} stations here list a ${fuel.toLowerCase()} price on Google Maps right now.</div>${checked}`;
+                $('hero').innerHTML = `<div class="label">Cheapest ${fl} ${esc(r.label)}</div>
+                    <div class="empty">None of the ${r.stations.length} stations here list a ${fl} price on Google Maps right now.</div>${footer}`;
             } else {
                 const s = priced[0], p = s.prices[fuel];
-                const dist = s.dist !== undefined ? `${s.dist.toFixed(1)} mi · ` : '';
-                $('hero').innerHTML = `<div class="label">Cheapest ${fuel.toLowerCase()} ${esc(r.label)}</div>
-                    <div class="big">$${p.price.toFixed(2)}<small>/gal</small></div>
+                const [dollars, cents] = p.price.toFixed(2).split('.');
+                const dist = s.dist !== undefined ? `<span>${s.dist.toFixed(1)} mi away</span>` : '';
+                const fresh = p.days_ago != null && p.days_ago <= 1 ? `<span class="pill">● ${p.days_ago <= 0 ? 'Updated today' : 'Updated yesterday'}</span>`
+                    : p.days_ago != null ? `<span class="pill ${p.days_ago > 7 ? 'orange' : ''}">Updated ${p.days_ago} days ago</span>` : '';
+                const second = priced[1] && priced[1].prices[fuel].price - p.price >= 0.01
+                    ? `<span>${money(priced[1].prices[fuel].price - p.price)} less than the next cheapest</span>` : '';
+                $('hero').innerHTML = `<div class="label">Cheapest ${fl} ${esc(r.label)}</div>
+                    <div class="big">$${dollars}<span class="cents">.${cents}</span><small>/gal</small></div>
                     <div class="where">${esc(s.name)}</div>
                     <div class="addr">${esc(s.address)}</div>
-                    <div class="meta">${dist}${updatedText(p.days_ago)}</div>
+                    <div class="meta">${fresh}${dist}</div>
+                    ${second ? `<div class="meta">${second}</div>` : ''}
                     <div class="actions">
-                        <a class="btn" href="${directionsUrl(s)}" target="_blank" rel="noopener">Directions</a>
-                        <button class="btn ghost" type="button" data-goto="map">All ${r.stations.length} stations</button>
-                    </div>${checked}`;
+                        <a class="btn" href="${directionsUrl(s)}" target="_blank" rel="noopener">${icon('car')} Directions</a>
+                        <button class="btn gray" type="button" data-goto="map">All ${r.stations.length}</button>
+                    </div>${footer}`;
             }
-            if (state.loading && r) $('hero').insertAdjacentHTML('beforeend', '<div class="checked"><span>Updating…</span></div>');
 
             const others = priced.slice(1, 4);
             $('runners-up').innerHTML = others.length ? others.map(s => miniRow(s, s.prices[fuel], s.dist !== undefined ? `${s.dist.toFixed(1)} mi` : '')).join('')
-                : `<div class="muted" style="font-size:14px">${r ? 'No other prices here yet.' : 'Prices show up once we know where you are.'}</div>`;
+                : `<div class="empty-row">${r ? 'No other prices here yet.' : 'Prices show up once we know where you are.'}</div>`;
 
             const favs = state.prefs.favorites;
-            $('favorites').innerHTML = favs.length ? favs.map(f => miniRow(f, f.prices && f.prices[fuel], f.seenAt ? `checked ${agoText(f.seenAt)}` : '')).join('')
-                : '<div class="muted" style="font-size:14px">Tap ☆ next to a station on the map to save it here.</div>';
+            $('favorites').innerHTML = favs.length ? favs.map(f => miniRow(f, f.prices && f.prices[fuel], f.seenAt ? agoText(f.seenAt) : '')).join('')
+                : `<div class="empty-row">Tap ${icon('star')} next to a station on the map to keep it here.</div>`;
         }
 
         function miniRow(s, p, note) {
-            return `<div class="mini" data-id="${esc(s.id)}">
-                <div class="info"><div class="name">${esc(s.name)}</div><div class="addr">${esc(s.address)}</div></div>
-                <div class="val">${p ? '$' + p.price.toFixed(2) : '<span class="muted" style="font-size:13px">no price</span>'}<small>${esc(note)}</small></div>
+            return `<div class="row tap" data-id="${esc(s.id)}">
+                <div class="info"><div class="title name">${esc(s.name)}</div><div class="sub">${esc(s.address)}</div></div>
+                <div class="val">${p ? money(p.price) : '<span class="na">—</span>'}<small>${esc(note)}</small></div>
+                ${icon('chev', 'chev')}
             </div>`;
         }
 
         function renderAvatar(el) {
-            const u = state.user;
+            const u = state.user, n = firstName();
             if (u && u.photoURL) el.innerHTML = `<img src="${esc(u.photoURL)}" alt="" referrerpolicy="no-referrer">`;
-            else el.textContent = u ? (firstName()[0] || '?').toUpperCase() : '👤';
+            else if (n) el.textContent = n[0].toUpperCase();
+            else el.innerHTML = icon('person');
         }
 
         // ---------- Map ----------
@@ -549,35 +675,36 @@
         }).addTo(map);
 
         function renderMap() {
-            $('chips').innerHTML = chipsHtml();
+            $('map-fuels').innerHTML = fuelsHtml();
             const r = state.results, fuel = state.prefs.fuel;
-            if (state.loading) $('status').textContent = 'Loading stations…';
+            if (state.loading) $('status').innerHTML = `<span class="spin"></span>&nbsp; ${state.slow ? 'Waking up the server, hang tight…' : 'Loading stations…'}`;
             else if (state.error) $('status').textContent = state.error;
-            else if (r) $('status').textContent = `${r.stations.length} stations ${r.label} · ${r.stations.filter(s => Object.keys(s.prices).length).length} with prices`;
+            else if (r) $('status').textContent = `${r.stations.length} stations ${r.label} · ${r.stations.filter(s => Object.keys(s.prices).length).length} with prices · ${agoText(r.at)}`;
             $('status').classList.toggle('error', !!state.error && !state.loading);
 
             markers.forEach(m => m.remove());
             markers = [];
             if (youMarker) { youMarker.remove(); youMarker = null; }
-            if (!r) { $('list').innerHTML = state.loading ? '<div class="loader">Loading nearby stations…</div>' : ''; return; }
-            if (!r.stations.length) { $('list').innerHTML = '<div class="loader">No gas stations found here.</div>'; return; }
+            if (!r) { $('list').innerHTML = `<div class="empty-row">${state.loading ? loadingText() : 'Search a zip code or tap the location button.'}</div>`; return; }
+            if (!r.stations.length) { $('list').innerHTML = '<div class="empty-row">No gas stations found here.</div>'; return; }
 
             const sorted = sortedStations();
             const best = sorted[0].prices[fuel] ? sorted[0].id : null;
             $('list').innerHTML = sorted.map(s => {
                 const p = s.prices[fuel];
                 const dist = s.dist !== undefined ? `${s.dist.toFixed(1)} mi · ` : '';
+                const on = isFav(s.id);
                 return `
-                <div class="station ${s.id === best ? 'best' : ''}" data-id="${esc(s.id)}">
-                    <button class="star ${isFav(s.id) ? 'on' : ''}" type="button" data-star="${esc(s.id)}" aria-label="Save station">${isFav(s.id) ? '★' : '☆'}</button>
+                <div class="row tap station ${s.id === best ? 'best' : ''}" data-id="${esc(s.id)}" style="--inset:52px">
+                    <button class="star ${on ? 'on' : ''}" type="button" data-star="${esc(s.id)}" aria-label="${on ? 'Remove saved station' : 'Save station'}" aria-pressed="${on}">${icon(on ? 'star-fill' : 'star')}</button>
                     <div class="info">
-                        <div class="name">${esc(s.name)}${s.id === best ? '<span class="badge">CHEAPEST</span>' : ''}</div>
-                        <div class="addr">${esc(s.address)}</div>
-                        <div class="meta">${dist}${p ? updatedText(p.days_ago) : ''}</div>
+                        <div class="title name">${esc(s.name)}${s.id === best ? '<span class="badge">CHEAPEST</span>' : ''}</div>
+                        <div class="sub">${esc(s.address)}</div>
+                        <div class="meta">${dist}${p ? updatedText(p.days_ago) : 'no price listed'}</div>
                     </div>
-                    <div class="price">
-                        ${p ? `<div class="val">$${p.price.toFixed(2)}</div>` : '<div class="na">no price data</div>'}
-                        <a class="go" href="${directionsUrl(s)}" target="_blank" rel="noopener">Directions ➜</a>
+                    <div style="text-align:right">
+                        <div class="val">${p ? money(p.price) : '<span class="na">—</span>'}</div>
+                        <a class="go" href="${directionsUrl(s)}" target="_blank" rel="noopener">Directions</a>
                     </div>
                 </div>`;
             }).join('');
@@ -585,14 +712,14 @@
             sorted.forEach(s => {
                 if (s.lat == null) return;
                 const p = s.prices[fuel];
-                const color = s.id === best ? '#3ddc84' : (p ? '#00d4ff' : '#666');
-                const m = L.circleMarker([s.lat, s.lng], { radius: 8, color, fillColor: color, fillOpacity: 0.9, weight: 2 })
-                    .bindPopup(`<b>${esc(s.name)}</b><br>${p ? '$' + p.price.toFixed(2) + ' ' + fuel : 'no price data'}`)
+                const color = s.id === best ? '#30d158' : (p ? '#00d4ff' : '#636366');
+                const m = L.circleMarker([s.lat, s.lng], { radius: s.id === best ? 10 : 8, color: '#000', fillColor: color, fillOpacity: 1, weight: 2 })
+                    .bindPopup(`<b>${esc(s.name)}</b><br>${p ? money(p.price) + ' ' + fuel.toLowerCase() : 'no price listed'}`)
                     .addTo(map);
                 m.stationId = s.id;
                 markers.push(m);
             });
-            if (r.origin) youMarker = L.circleMarker([r.origin.lat, r.origin.lng], { radius: 7, color: '#fff', fillColor: '#fff', fillOpacity: 1 }).bindPopup('You').addTo(map);
+            if (r.origin) youMarker = L.circleMarker([r.origin.lat, r.origin.lng], { radius: 8, color: '#fff', weight: 3, fillColor: '#0a84ff', fillOpacity: 1 }).bindPopup('You are here').addTo(map);
         }
 
         function fitMap() {
@@ -620,20 +747,24 @@
         function renderAccount() {
             const u = state.user;
             renderAvatar($('account-avatar'));
-            $('account-name').textContent = u ? (u.displayName || firstName()) : 'Guest';
-            $('account-email').textContent = u ? (u.email || '') : 'Saved stations live on this phone only';
+            $('account-name').textContent = (u && u.displayName) || state.prefs.name || (u && firstName()) || 'Add your name below';
+            $('account-email').textContent = u ? (u.email || '') : 'Saved on this phone';
+            // Signed-in names come from Google/email, so only guests edit it here
+            $('name-row').hidden = !!(u && u.displayName);
             $('account-signin').hidden = !!u || !fb;
-            $('signout-btn').textContent = u ? 'Sign out' : 'Back to welcome screen';
+            $('signout-btn').hidden = !u;
+            $('account-actions').hidden = $('account-signin').hidden && $('signout-btn').hidden;
 
             if (!$('fuel-select').options.length) $('fuel-select').innerHTML = FUELS.map(f => `<option>${f}</option>`).join('');
             $('fuel-select').value = state.prefs.fuel;
             if (document.activeElement !== $('home-zip')) $('home-zip').value = state.prefs.homeZip || '';
+            if (document.activeElement !== $('name-field')) $('name-field').value = state.prefs.name || '';
 
             let html;
-            if (isStandalone()) html = '<p class="muted" style="margin:6px 0 0">✅ GassyBot is installed. Open it from your Home Screen any time.</p>';
-            else if (installPrompt) html = '<p class="muted" style="margin:6px 0 12px">Add GassyBot to your Home Screen so it opens like an app.</p><button class="btn block" type="button" id="install-btn">Install GassyBot</button>';
-            else if (isIOS) html = `<ol class="steps"><li>Open this page in <b>Safari</b></li><li>Tap the <b>Share</b> button <span aria-hidden="true">⬆︎</span></li><li>Scroll down and tap <b>Add to Home Screen</b></li><li>Tap <b>Add</b>. The GassyBot icon appears with your apps.</li></ol>`;
-            else html = `<ol class="steps"><li>Open this page in <b>Chrome</b></li><li>Tap the <b>⋮</b> menu</li><li>Tap <b>Add to Home screen</b> or <b>Install app</b></li></ol>`;
+            if (isStandalone()) html = '✅ GassyBot is on your Home Screen. Open it from there any time.';
+            else if (installPrompt) html = '<p style="margin:0 0 12px">Add GassyBot to your Home Screen so it opens like an app.</p><button class="btn block" type="button" id="install-btn">Install GassyBot</button>';
+            else if (isIOS) html = `<ol style="margin:0;padding-left:20px;line-height:1.7"><li>Open this page in <b>Safari</b></li><li>Tap the <b>Share</b> button</li><li>Tap <b>Add to Home Screen</b></li><li>Tap <b>Add</b></li></ol>`;
+            else html = `<ol style="margin:0;padding-left:20px;line-height:1.7"><li>Open this page in <b>Chrome</b></li><li>Tap the <b>⋮</b> menu</li><li>Tap <b>Add to Home screen</b> or <b>Install app</b></li></ol>`;
             $('install-body').innerHTML = html;
         }
 
@@ -655,9 +786,10 @@
             $('welcome').hidden = false;
             $('app').hidden = true;
             $('auth-error').textContent = '';
-            // Without Firebase there is nothing to sign in to
+            // With Firebase: real sign-in. Without: just ask for a name.
             $('auth-options').hidden = !fb;
-            $('guest-btn').textContent = fb ? 'Continue without an account' : 'Get started';
+            $('local-start').hidden = !!fb;
+            $('guest-btn').hidden = !fb;
         }
 
         function showApp() {
@@ -665,15 +797,19 @@
             $('app').hidden = false;
             renderAll();
             showTab(state.tab);
-            if (!state.results && !state.loading) locate();
+            // Show the last prices right away, then fetch new ones if they're old
+            if (!state.loading && (!state.results || Date.now() - state.results.at > STALE_MS)) refresh();
         }
+
+        // Large titles collapse into the bar when you scroll, like iOS
+        document.querySelectorAll('.view').forEach(v => v.addEventListener('scroll', () => v.classList.toggle('scrolled', v.scrollTop > 30), { passive: true }));
 
         // ---------- Sign in ----------
         const AUTH_ERRORS = {
             'auth/invalid-credential': "That email and password don't match. Check them or create an account.",
             'auth/wrong-password': "That email and password don't match.",
-            'auth/user-not-found': 'No account with that email yet. Tap Create account.',
-            'auth/email-already-in-use': 'That email already has an account. Tap Sign in instead.',
+            'auth/user-not-found': 'No account with that email yet. Tap Create Account.',
+            'auth/email-already-in-use': 'That email already has an account. Tap Sign In instead.',
             'auth/weak-password': 'Use a password with at least 6 characters.',
             'auth/invalid-email': "That doesn't look like an email address.",
             'auth/popup-closed-by-user': 'Google sign-in was closed before it finished.',
@@ -702,6 +838,13 @@
                 .then(() => { $('auth-error').textContent = `Sent a reset link to ${email}.`; })
                 .catch(authFail);
         });
+        $('local-start').addEventListener('submit', e => {
+            e.preventDefault();
+            state.prefs.name = $('name-input').value.trim();
+            savePrefs();
+            store.set('gassy-guest', true);
+            showApp();
+        });
         $('guest-btn').addEventListener('click', () => { store.set('gassy-guest', true); showApp(); });
         $('account-signin').addEventListener('click', () => { store.del('gassy-guest'); showWelcome(); });
         $('signout-btn').addEventListener('click', () => {
@@ -719,10 +862,10 @@
             const star = e.target.closest('[data-star]');
             if (star) { toggleFav(star.dataset.star); return; }
             if (e.target.closest('a')) return;
-            if (e.target.closest('#refresh-btn')) { state.results && !state.results.nearMe ? search(state.results.label.replace(/^near /, '')) : locate(); return; }
+            if (e.target.closest('#refresh-btn')) { refresh(); return; }
             if (e.target.closest('#hero-locate')) { locate(); return; }
             if (e.target.closest('#install-btn')) { installPrompt.prompt(); installPrompt = null; return; }
-            const row = e.target.closest('.station, .mini');
+            const row = e.target.closest('.row[data-id]');
             if (row) focusStation(row.dataset.id);
         });
 
@@ -744,19 +887,15 @@
         });
         $('locate-btn').addEventListener('click', locate);
         $('fuel-select').addEventListener('change', e => setFuel(e.target.value));
-        $('home-zip-form').addEventListener('submit', e => {
-            e.preventDefault();
-            state.prefs.homeZip = $('home-zip').value.trim();
-            savePrefs();
-            $('home-zip-msg').textContent = state.prefs.homeZip ? 'Saved.' : 'Cleared.';
-        });
+        $('home-zip').addEventListener('change', e => { state.prefs.homeZip = e.target.value.trim(); savePrefs(); });
+        $('name-field').addEventListener('change', e => { state.prefs.name = e.target.value.trim(); savePrefs(); renderAll(); });
         $('nudge-close').addEventListener('click', () => { store.set('gassy-nudge-closed', true); renderHome(); });
         $('nudge-how').addEventListener('click', () => showTab('account'));
 
         // Prices change during the day, so refresh when the app comes back after 10+ minutes
         document.addEventListener('visibilitychange', () => {
             const r = state.results;
-            if (document.visibilityState === 'visible' && r && r.nearMe && Date.now() - r.at > 10 * 60 * 1000) locate();
+            if (document.visibilityState === 'visible' && !$('app').hidden && !state.loading && r && Date.now() - r.at > STALE_MS) refresh();
         });
 
         // ---------- Start ----------

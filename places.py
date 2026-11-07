@@ -93,7 +93,9 @@ def _request(url, body, cache_key):
         raise RuntimeError(data["error"].get("message", "Google Places error"))
 
     stations = [_parse_station(p) for p in data.get("places", [])]
-    _cache[cache_key] = (time.time(), stations)
+    #don't remember an empty answer, so the next try asks Google again
+    if stations:
+        _cache[cache_key] = (time.time(), stations)
     return stations
 
 
@@ -122,6 +124,8 @@ def stations_for_place(query):
         "textQuery": f"gas stations near {query}",
         "includedType": "gas_station",
         "pageSize": 20,
+        #the server runs in Oregon, so say which country a bare zip code is in
+        "regionCode": "US",
     }
     return _request(TEXT_URL, body, key)
 

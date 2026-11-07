@@ -3,3 +3,6 @@ venv/
 __pycache__/
 *.pyc
 .gemini/
+# Personal data and build leftovers
+user_preferences.json
+.DS_Store
