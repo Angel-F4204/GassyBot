@@ -117,7 +117,7 @@
         .view.scrolled .navbar .t { opacity: 1; }
         .page { padding: 0 16px 24px; display: flex; flex-direction: column; gap: 22px; }
         .large-title { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin-top: -2px; }
-        .large-title h1 { margin: 0; font-size: 34px; font-weight: 700; letter-spacing: 0.37px; line-height: 1.2; }
+        .large-title h1 { margin: 0; font-size: 34px; font-weight: 700; letter-spacing: 0.37px; line-height: 1.2; overflow-wrap: anywhere; }
         .large-title .sub { font-size: 15px; color: var(--label-2); margin-top: 1px; letter-spacing: -0.24px; }
         .avatar { width: 40px; height: 40px; border-radius: 50%; border: 0; flex-shrink: 0; display: grid; place-items: center; overflow: hidden;
             background: linear-gradient(180deg, #a1a1a6, #6e6e73); color: #fff; font-weight: 600; font-size: 17px; cursor: pointer; }
@@ -595,8 +595,10 @@
         function renderHome() {
             const h = new Date().getHours();
             const part = h < 5 ? 'Good evening' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
-            $('greeting').textContent = firstName() ? `${part}, ${firstName()}` : part;
-            $('today').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).toUpperCase();
+            // "Good evening, Angel" doesn't fit a phone-width large title, so the time of day moves up a line
+            const date = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+            $('greeting').textContent = firstName() ? `Hi, ${firstName()}` : part;
+            $('today').textContent = (firstName() ? `${part} · ${date}` : date).toUpperCase();
             renderAvatar($('home-avatar'));
             $('home-fuels').innerHTML = fuelsHtml();
             $('install-nudge').hidden = isStandalone() || store.get('gassy-nudge-closed', false);
